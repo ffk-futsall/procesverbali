@@ -1,0 +1,110 @@
+{
+ "version": 1,
+ "teams": [
+  {
+   "id": "rmvz25zxcichn8",
+   "name": "FC PRISHTINA 01",
+   "kits": {
+    "first": {
+     "shirt": "BARDHË, KALTER",
+     "shorts": "BARDH",
+     "socks": "BARDH"
+    },
+    "second": {
+     "shirt": "VJOLLCË ",
+     "shorts": "VJOLLCË",
+     "socks": "VJOLLCË"
+    },
+    "third": {
+     "shirt": "",
+     "shorts": "",
+     "socks": ""
+    }
+   },
+   "players": [
+    {
+     "id": "rmvz27irc9xpo3",
+     "shirtNo": "1",
+     "name": "bajram ramadani",
+     "idNumber": "001122m01"
+    },
+    {
+     "id": "rmvz27u7cl0oe7",
+     "shirtNo": "5",
+     "name": "ramadan alaj",
+     "idNumber": "112233m01"
+    }
+   ],
+   "officials": [
+    {
+     "id": "rmvz25zxd3i04j",
+     "role": "Përfaqësuesi",
+     "name": "",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz25zxdj9f3y",
+     "role": "Trajneri",
+     "name": "ferid agushi",
+     "idNumber": "222333m98"
+    },
+    {
+     "id": "rmvz25zxdo9ygz",
+     "role": "Nd.Trajneri",
+     "name": "jeton rukovci",
+     "idNumber": "555888m89"
+    }
+   ]
+  },
+  {
+   "id": "rmvz28ykgdzq12",
+   "name": "fc drenica",
+   "kits": {
+    "first": {
+     "shirt": "kuqe , zi",
+     "shorts": "zi",
+     "socks": "zi"
+    },
+    "second": {
+     "shirt": "kuqe",
+     "shorts": "kuqe",
+     "socks": "zi"
+    },
+    "third": {
+     "shirt": "",
+     "shorts": "",
+     "socks": ""
+    }
+   },
+   "players": [
+    {
+     "id": "rmvz29ql4v8gc4",
+     "shirtNo": "1",
+     "name": "behar selmanaj",
+     "idNumber": "221155m99"
+    },
+    {
+     "id": "rmvz2a2ewtecbq",
+     "shirtNo": "8",
+     "name": "jetmir gashi",
+     "idNumber": "336699m22"
+    }
+   ],
+   "officials": [
+    {
+     "id": "rmvz28ykg2nzpg",
+     "role": "Përfaqësuesi",
+     "name": "",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz28ykgy5ody",
+     "role": "Trajneri",
+     "name": "xhemajl beqiri",
+     "idNumber": "ne proces"
+    }
+   ]
+  }
+ ],
+ "deleted": []
+}
