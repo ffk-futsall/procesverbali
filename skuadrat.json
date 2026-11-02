@@ -109,6 +109,79 @@
      "idNumber": ""
     }
    ]
+  },
+  {
+   "id": "rmvz3qri1agkew",
+   "name": "fc shtimja 26",
+   "kits": {
+    "first": {
+     "shirt": "bardh kalter",
+     "shorts": "bardh",
+     "socks": "bardh"
+    },
+    "second": {
+     "shirt": "bardh kuq",
+     "shorts": "bardh",
+     "socks": "bardh"
+    },
+    "third": {
+     "shirt": "",
+     "shorts": "",
+     "socks": ""
+    }
+   },
+   "players": [
+    {
+     "id": "rmvz3rgr5lrbl0",
+     "shirtNo": "1",
+     "name": "liridon emini",
+     "idNumber": "222999m99"
+    },
+    {
+     "id": "rmvz3rsapso7sy",
+     "shirtNo": "7",
+     "name": "arblend bytyqi",
+     "idNumber": "123987m99"
+    }
+   ],
+   "officials": [
+    {
+     "id": "rmvz3qri15djtw",
+     "role": "Përfaqësuesi",
+     "name": "",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz3qri18km9y",
+     "role": "Trajneri",
+     "name": "alban iballi",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz3qri17qfj8",
+     "role": "Nd.Trajneri",
+     "name": "armend hysenaj",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz3qri1acxub",
+     "role": "Tr.Portierave",
+     "name": "",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz3qri1becpv",
+     "role": "Mjeku",
+     "name": "",
+     "idNumber": ""
+    },
+    {
+     "id": "rmvz3qri18axsa",
+     "role": "Fizioterapeuti",
+     "name": "",
+     "idNumber": ""
+    }
+   ]
   }
  ],
  "deleted": [
