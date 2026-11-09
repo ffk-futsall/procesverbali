@@ -2,66 +2,6 @@
  "version": 1,
  "teams": [
   {
-   "id": "rmvz3f3k1pn0d5",
-   "name": "fc prishtina 01",
-   "kits": {
-    "first": {
-     "shirt": "bardh",
-     "shorts": "bardh",
-     "socks": "bardh"
-    },
-    "second": {
-     "shirt": "",
-     "shorts": "",
-     "socks": ""
-    },
-    "third": {
-     "shirt": "",
-     "shorts": "",
-     "socks": ""
-    }
-   },
-   "players": [],
-   "officials": [
-    {
-     "id": "rmvz3f3k1uuqf7",
-     "role": "Përfaqësuesi",
-     "name": "",
-     "idNumber": ""
-    },
-    {
-     "id": "rmvz3f3k1i241j",
-     "role": "Trajneri",
-     "name": "",
-     "idNumber": ""
-    },
-    {
-     "id": "rmvz3f3k1jmhws",
-     "role": "Nd.Trajneri",
-     "name": "",
-     "idNumber": ""
-    },
-    {
-     "id": "rmvz3f3k1kxh5s",
-     "role": "Tr.Portierave",
-     "name": "",
-     "idNumber": ""
-    },
-    {
-     "id": "rmvz3f3k1mjo6l",
-     "role": "Mjeku",
-     "name": "",
-     "idNumber": ""
-    },
-    {
-     "id": "rmvz3f3k10tqcr",
-     "role": "Fizioterapeuti",
-     "name": "",
-     "idNumber": ""
-    }
-   ]
-  },
-  {
    "id": "rmvz3qri1agkew",
    "name": "fc shtimja 26",
    "kits": {
@@ -136,6 +76,7 @@
   }
  ],
  "deleted": [
+  "rmvz3f3k1pn0d5",
   "rmvz28ykgdzq12",
   "rmvz25zxcichn8"
  ]
