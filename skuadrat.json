@@ -2,55 +2,6 @@
  "version": 1,
  "teams": [
   {
-   "id": "rmvz28ykgdzq12",
-   "name": "fc drenica",
-   "kits": {
-    "first": {
-     "shirt": "kuqe , zi",
-     "shorts": "zi",
-     "socks": "zi"
-    },
-    "second": {
-     "shirt": "kuqe",
-     "shorts": "kuqe",
-     "socks": "zi"
-    },
-    "third": {
-     "shirt": "",
-     "shorts": "",
-     "socks": ""
-    }
-   },
-   "players": [
-    {
-     "id": "rmvz29ql4v8gc4",
-     "shirtNo": "1",
-     "name": "behar selmanaj",
-     "idNumber": "221155m99"
-    },
-    {
-     "id": "rmvz2a2ewtecbq",
-     "shirtNo": "8",
-     "name": "jetmir gashi",
-     "idNumber": "336699m22"
-    }
-   ],
-   "officials": [
-    {
-     "id": "rmvz28ykg2nzpg",
-     "role": "Përfaqësuesi",
-     "name": "",
-     "idNumber": ""
-    },
-    {
-     "id": "rmvz28ykgy5ody",
-     "role": "Trajneri",
-     "name": "xhemajl beqiri",
-     "idNumber": "ne proces"
-    }
-   ]
-  },
-  {
    "id": "rmvz3f3k1pn0d5",
    "name": "fc prishtina 01",
    "kits": {
@@ -185,6 +136,7 @@
   }
  ],
  "deleted": [
+  "rmvz28ykgdzq12",
   "rmvz25zxcichn8"
  ]
 }
