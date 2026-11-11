@@ -537,7 +537,7 @@ body{background:var(--bg)!important;color:var(--ink)}
 @keyframes rpPulse{0%,100%{transform:none}50%{transform:scale(1.008)}}
 @media(max-width:600px){.rp-stack{top:66px}.rp-pop{padding:10px 11px}.rp-grid{gap:6px}.rp-grid b{font-size:18px}.rp-main b{font-size:22px}.rp-grid>div{padding:6px 7px}.rp-actions .btn{width:100%}}
 @media print{.rp-stack,.red-extra{display:none!important}}
-</style></head><body><noscript><p style="padding:24px;font:16px Arial">Aplikacioni kërkon JavaScript. Hapeni skedarin në Safari, Chrome ose Edge.</p></noscript><div id="app"></div><script>const SESSION_KEY='ffk-futsal-match-session-v2', OLD_SESSION_KEY='ffk-futsal-match-session-v1';
+</style><style>#app{display:none}</style></head><body><noscript><p style="padding:24px;font:16px Arial">Aplikacioni kërkon JavaScript. Hapeni skedarin në Safari, Chrome ose Edge.</p></noscript><div id="app"></div><script>let SESSION_KEY='ffk-unselected-session', OLD_SESSION_KEY='ffk-unselected-old';
 const roles=['Përfaqësuesi','Trajneri','Nd.Trajneri','Tr.Portierave','Mjeku','Fizioterapeuti'];
 const disciplineRows={kvB1:'K.V SKUADRA A',kvB2:'K.V SKUADRA B',kkA:'K.K. SKUADRA A',kkB:'K.K SKUADRA B'};
 const phases={setup:'Ndeshja nuk ka filluar',first:'Pjesa e parë',halftime:'Pushimi mes pjesëve',second:'Pjesa e dytë',after_second:'Pjesa e dytë përfundoi',extra:'Koha shtesë',after_extra:'Koha shtesë përfundoi',penalties:'Penalltitë',finished:'Ndeshja përfundoi'};
@@ -564,7 +564,7 @@ const competitionLabel=()=>{const c=String(data.competition||'').trim();const s=
 const blankEvent=()=>({shirtNo:'',minute:'',shift:''});
 function blankData(){return {round:'',competition:'',cupStage:'',season:'',matchDate:'',startTime:'',venue:'',city:'',organization:'',organizationNote:'',securityName:'',securityId:'',attendance:'',teams:{a:{name:'',kit:{socks:'',shorts:'',shirt:''},players:Array.from({length:14},()=>({shirtNo:'',name:'',idNumber:''})),officials:roles.map(role=>({role,name:'',idNumber:'',custom:false,enabled:true}))},b:{name:'',kit:{socks:'',shorts:'',shirt:''},players:Array.from({length:14},()=>({shirtNo:'',name:'',idNumber:''})),officials:roles.map(role=>({role,name:'',idNumber:'',custom:false,enabled:true}))}},scores:{first:{a:'',b:''},second:{a:'',b:''},extra:{a:'',b:''},penalties:{a:'',b:''},final:{a:'',b:''}},officials:{ref1:'',ref2:'',ref3:'',ref4:'',delegate:'',delegateCity:'',timekeeper:''},fouls:{a:{p1:Array(10).fill(''),p2:Array(10).fill('')},b:{p1:Array(10).fill(''),p2:Array(10).fill('')}},penalties:{a:[],b:[]},timeouts:{first:{a:'',b:''},second:{a:'',b:''}},goals:Array.from({length:28},()=>({team:'',shirtNo:'',scorerName:'',minute:'',addedTime:'',period:'',score:''})),discipline:{kvB1:Array.from({length:8},blankEvent),kvB2:Array.from({length:8},blankEvent),kkA:Array.from({length:8},blankEvent),kkB:Array.from({length:8},blankEvent)},notes:{incidents:'',teamA:'',teamB:''},sendRemarks:false,signatures:{teamA:'',teamB:'',ref1:'',ref2:'',ref3:'',delegate:''},timeline:[],redPenalties:[],phase:'setup',locked:false,lockHash:'',actualStart:'',liveScore:{a:0,b:0},clock:{running:false,startedAt:null,elapsedMs:0,firstElapsedMs:0,secondElapsedMs:0,extraElapsedMs:0,matchStartedAt:null,matchEndedAt:null,matchDurationMs:0}}}
 function mergeData(saved){const d=blankData();if(!saved||typeof saved!=='object')return d;Object.assign(d,saved);for(const side of ['a','b']){d.teams[side]={...blankData().teams[side],...(saved.teams?.[side]||{}),kit:{...d.teams[side].kit,...(saved.teams?.[side]?.kit||{})},players:Array.from({length:14},(_,i)=>({...blankData().teams[side].players[i],...(saved.teams?.[side]?.players?.[i]||{})})),officials:Array.isArray(saved.teams?.[side]?.officials)?saved.teams[side].officials.map((o,i)=>({...blankData().teams[side].officials[i],...(o||{}),role:o?.role||roles[i]||'Zyrtar shtesë',custom:o?.custom??!roles.includes(o?.role),enabled:o?.enabled!==false})):roles.map(role=>({role,name:'',idNumber:'',custom:false,enabled:true}))}}for(const p of ['first','second','extra','penalties','final'])d.scores[p]={...blankData().scores[p],...(saved.scores?.[p]||{})};d.officials={...d.officials,...(saved.officials||{})};d.fouls={a:{p1:Array.from({length:10},(_,i)=>saved.fouls?.a?.p1?.[i]||''),p2:Array.from({length:10},(_,i)=>saved.fouls?.a?.p2?.[i]||'')},b:{p1:Array.from({length:10},(_,i)=>saved.fouls?.b?.p1?.[i]||''),p2:Array.from({length:10},(_,i)=>saved.fouls?.b?.p2?.[i]||'')}};d.penalties={a:Array.isArray(saved.penalties?.a)?saved.penalties.a:[],b:Array.isArray(saved.penalties?.b)?saved.penalties.b:[]};d.timeouts={first:{...d.timeouts.first,...(saved.timeouts?.first||{})},second:{...d.timeouts.second,...(saved.timeouts?.second||{})}};d.goals=Array.from({length:28},(_,i)=>({...blankData().goals[i],...(saved.goals?.[i]||{})}));d.discipline=Object.fromEntries(Object.keys(disciplineRows).map(k=>[k,Array.from({length:8},(_,i)=>({...blankEvent(),...(saved.discipline?.[k]?.[i]||{})}))]));d.notes={...d.notes,...(saved.notes||{})};d.signatures={...d.signatures,...(saved.signatures||{})};d.timeline=Array.isArray(saved.timeline)?saved.timeline:[];d.redPenalties=Array.isArray(saved.redPenalties)?saved.redPenalties:[];d.phase=saved.phase||'setup';d.liveScore={...d.liveScore,...(saved.liveScore||{})};d.clock={...d.clock,...(saved.clock||{})};if(!saved.liveScore){const final=saved.scores?.final;d.liveScore={a:Number(final?.a||0),b:Number(final?.b||0)}}return d}
-const SAVED_KEY='ffk-futsal-saved-protocol';function readData(){try{return mergeData(JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SAVED_KEY)||sessionStorage.getItem(OLD_SESSION_KEY)||'null'))}catch{return blankData()}}
+let SAVED_KEY='ffk-unselected-saved';function readData(){try{return mergeData(JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SAVED_KEY)||sessionStorage.getItem(OLD_SESSION_KEY)||'null'))}catch{return blankData()}}
 let data=readData(),step=1,editMode=false,currentView='wizard',saveTimer=null,clockTicker=null,modalEventId=null;
 const app=document.querySelector('#app'),$=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1011,7 +1011,7 @@ const setList=(k,a)=>{try{localStorage.setItem(k,JSON.stringify([...new Set(a)])
 const addList=(k,id)=>{if(id)setList(k,[...getList(k),id])};
 const b64e=s=>btoa(unescape(encodeURIComponent(s))),b64d=s=>decodeURIComponent(escape(atob(s.replace(/\s/g,''))));
 function ghGuess(){const m=location.hostname.match(/^(.+)\.github\.io$/);if(!m)return {owner:'',repo:''};const seg=location.pathname.split('/').filter(Boolean)[0]||'';return {owner:m[1],repo:(seg&&!/\.html?$/i.test(seg))?seg:m[1]+'.github.io'}}
-function ghCfg(){let c=null;try{c=JSON.parse(localStorage.getItem(GH_KEY)||'null')}catch{}const g=ghGuess();return {owner:(c&&c.owner)||g.owner,repo:(c&&c.repo)||g.repo,token:(c&&c.token)||''}}
+function ghCfg(){return {owner:'',repo:'',token:''}}
 let ghEtag='',ghLast=null;
 async function ghGet(){const c=ghCfg();if(!c.owner||!c.repo)throw new Error('norepo');
   const res=await fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${GH_FILE}`,{headers:{Accept:'application/vnd.github+json',...(c.token?{Authorization:'Bearer '+c.token}:{}),...(ghEtag&&ghLast?{'If-None-Match':ghEtag}:{})},cache:'no-store'});
@@ -1063,33 +1063,7 @@ document.addEventListener('click',e=>{const s=e.target.closest&&e.target.closest
 
 if(currentView==='wizard')renderWizard();else if(currentView==='live')renderLive();
 syncRegistry();
-</script><script>
-(function(){
-var HASH='ef3dfd9c25883fa9b30c9f1725ef6159dba245e1ea10dc25649c36b0495f7c3d',SALT='ffk-futsal:',app=document.getElementById('app');
-function sha256(s){s=unescape(encodeURIComponent(s));var K=[],H0=[],p=0,i=2,j,t;function fr(x){return(x-Math.floor(x))*4294967296|0}
-for(;p<64;i++){var ok=true;for(j=2;j*j<=i;j++)if(i%j===0){ok=false;break}if(ok){if(p<8)H0[p]=fr(Math.pow(i,.5));K[p++]=fr(Math.pow(i,1/3))}}
-var l=s.length*8,n=(((l+64)>>9)<<4)+16,w=new Array(n).fill(0);for(i=0;i<s.length;i++)w[i>>2]|=s.charCodeAt(i)<<(24-(i%4)*8);w[l>>5]|=0x80<<(24-l%32);w[n-1]=l;
-function R(x,c){return(x>>>c)|(x<<(32-c))}var h=H0.slice();
-for(var o=0;o<n;o+=16){var W=w.slice(o,o+16),a=h[0],b=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],k=h[7];
-for(t=0;t<64;t++){if(t>=16){var s0=R(W[t-15],7)^R(W[t-15],18)^(W[t-15]>>>3),s1=R(W[t-2],17)^R(W[t-2],19)^(W[t-2]>>>10);W[t]=(W[t-16]+s0+W[t-7]+s1)|0}
-var S1=R(e,6)^R(e,11)^R(e,25),ch=(e&f)^(~e&g),t1=(k+S1+ch+K[t]+W[t])|0,S0=R(a,2)^R(a,13)^R(a,22),mj=(a&b)^(a&c)^(b&c),t2=(S0+mj)|0;
-k=g;g=f;f=e;e=(d+t1)|0;d=c;c=b;b=a;a=(t1+t2)|0}
-h[0]=(h[0]+a)|0;h[1]=(h[1]+b)|0;h[2]=(h[2]+c)|0;h[3]=(h[3]+d)|0;h[4]=(h[4]+e)|0;h[5]=(h[5]+f)|0;h[6]=(h[6]+g)|0;h[7]=(h[7]+k)|0}
-return h.map(function(x){return('00000000'+(x>>>0).toString(16)).slice(-8)}).join('')}
-window.__ffkSha=sha256;var REGHASH='012d35e10a4c72f08c90463faa10539f2a988e35055927432b346fc0f91f3e18';
-function unlocked(){try{return sessionStorage.getItem('ffk-auth')===HASH}catch(e){return false}}
-if(unlocked())return;
-app.style.display='none';
-var g=document.createElement('div');g.id='lockScreen';
-g.innerHTML='<form class="lock-card" autocomplete="off"><img src="'+(typeof FFK_LOGO==='string'?FFK_LOGO:'')+'" alt="FFK"><h1>Procesverbalet e Futsallit</h1><p>Shkruani fjalëkalimin për të hyrë</p><input type="password" id="lockPw" placeholder="Fjalëkalimi" autofocus><div id="lockErr"></div><button type="submit" class="btn btn-primary">Hyr</button><div style="margin-top:6px;font-size:12px;color:#7a8ba3;letter-spacing:.04em">Powered:DataPOS</div></form>';
-document.body.appendChild(g);
-var fails=0,busy=false;
-g.querySelector('form').addEventListener('submit',function(ev){ev.preventDefault();var m=g.querySelector('#lockErr');if(busy){m.textContent='Passwordi është gabim. Prisni pak dhe provoni përsëri.';return}var v=g.querySelector('#lockPw').value;
-if(sha256(SALT+v)===HASH){try{sessionStorage.setItem('ffk-auth',HASH)}catch(e){}g.remove();app.style.display=''}
-else if(sha256(SALT+v)===REGHASH){try{sessionStorage.setItem('ffk-auth',HASH);sessionStorage.setItem('ffk-reg-auth','1')}catch(e){}g.remove();app.style.display='';if(window.__openRegistry)window.__openRegistry()}
-else{fails++;busy=true;m.textContent='Passwordi është gabim. Provoni përsëri.';g.classList.remove('shake');void g.offsetWidth;g.classList.add('shake');g.querySelector('#lockPw').value='';g.querySelector('#lockPw').focus();setTimeout(function(){busy=false},Math.min(fails*700,5000))}});
-})();
-</script>
+</script><script>/* Legacy client-only password gate removed. */</script>
 <script>
 document.addEventListener('keydown',function(e){if(e.key!=='Enter'||e.isComposing||e.shiftKey)return;var t=e.target;if(!t||t.tagName!=='INPUT'||t.type==='checkbox'||t.type==='radio'||t.type==='button')return;if(t.closest('#modalRoot,#lockScreen'))return;
 if(t.closest('table')){var all=[].slice.call(document.querySelectorAll('.wizard-card input:not([type=hidden]):not([disabled])')),i=all.indexOf(t);if(i>=0&&all[i+1]){e.preventDefault();all[i+1].focus()}return}
@@ -1917,4 +1891,4 @@ function u(){var on=navigator.onLine;p.classList.toggle('off',!on);s.textContent
 addEventListener('online',u);addEventListener('offline',u);u();
 function foot(){var a=document.getElementById('app');if(!a||a.querySelector('.pro-foot')||!a.querySelector('.app-shell'))return;var f=document.createElement('div');f.className='pro-foot no-print';f.textContent='Federata e Futbollit e Kosovës · Futsall · Procesverbali Digjital';a.querySelector('.app-shell').appendChild(f)}
 new MutationObserver(foot).observe(document.getElementById('app')||document.body,{childList:true});foot()})();
-</script></body></html>
+</script><script src="vendor/supabase.js"></script><script src="delegate-app.js"></script></body></html>
