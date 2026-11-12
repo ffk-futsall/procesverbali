@@ -52,15 +52,34 @@
   }
   const priorPersist=persist;
   persist=function(){if(!assignment)return;priorPersist();revision++;saveBackup();status('Në pritje të ruajtjes…');clearTimeout(timer);timer=setTimeout(flush,600);};
+  const originalReportModal=window.__reopenExport;let reportMode='send';
+  function openReport(mode){
+    reportMode=mode;
+    if(typeof originalReportModal!=='function'){toast('Eksporti PDF nuk është i disponueshëm.',true);return;}
+    originalReportModal();
+    const modal=document.getElementById('pdfModal');if(!modal)return;
+    modal.querySelector('#pdfTitle').textContent='Raporti i ndeshjes';
+    const send=modal.querySelector('[data-pdf="send"]'),save=modal.querySelector('[data-pdf="download"]');
+    if(send)send.textContent='Dërgo raportin';if(save)save.textContent='Ruaj raportin (PDF)';
+    const hint=modal.querySelector('.pdf-sub');if(hint)hint.textContent='Raporti mund të përmbajë të dhëna personale dhe nënshkrime. Ndajeni vetëm me personat e autorizuar. Menyja e ndarjes varet nga pajisja dhe aplikacionet e instaluara.';
+    let canShareFiles=false;
+    try{canShareFiles=!!navigator.share&&(!navigator.canShare||navigator.canShare({files:[new File(['test'],'raport.pdf',{type:'application/pdf'})]}))}catch{}
+    if(send&&!canShareFiles){
+      send.addEventListener('click',e=>{e.stopPropagation();const msg=modal.querySelector('#pdfMsg');if(msg)msg.textContent='Kjo pajisje nuk mbështet ndarjen direkte të PDF-së. Ruajeni raportin dhe bashkëngjiteni në Viber, WhatsApp, Messenger ose email.'},true);
+    }
+    const title=modal.querySelector('#pdfTitle');if(title)title.textContent=mode==='send'?'Dërgo raportin':'Ruaj raportin';
+  }
+  window.__reopenExport=()=>openReport(reportMode);
   const oldRenderLive=renderLive,oldRenderWizard=renderWizard;
   function updatePublicationUI(){const box=document.getElementById('dg-publish'),note=document.getElementById('dg-publish-note');if(box){box.disabled=publicationBlocked;box.checked=published&&!publicationBlocked}if(note)note.textContent=publicationBlocked?'Administratori ka ndaluar publikimin në portal. Procesverbali vazhdon të ruhet.':'Publikohen vetëm të dhënat e ndeshjes, jo numrat personalë ose nënshkrimet.';}
   async function checkAccess(){if(!assignment)return;const id=assignment.id;try{const result=await api('GET');if(!assignment||assignment.id!==id)return;const current=(result.assignments||[]).find(x=>x.id===id&&x.state==='accepted');if(!current){stopped=true;saveBackup();clearInterval(accessTimer);status('Caktimi nuk është më i disponueshëm. Shkarkoni kopjen lokale dhe kontaktoni administratorin.',true);return}publicationBlocked=current.publication_blocked===true;if(publicationBlocked)published=false;updatePublicationUI()}catch{/* offline: do not change local work */}}
   function decorate(){
     app.querySelectorAll('[data-action="open-registry"],[data-action="new-match"],[data-action="reset-protocol"],[data-action="app-logout"],#saveState,.topbar .who').forEach(x=>x.remove());
     const host=app.querySelector('main');if(!host||!assignment)return;
-    const tools=document.createElement('div');tools.className='dg-actions';tools.innerHTML='<button type="button" class="dg-button secondary" id="dg-back">Ndeshjet e mia</button><button type="button" class="dg-button secondary" id="dg-retry-save">Ruaj përsëri</button><button type="button" class="dg-button secondary" id="dg-download">Shkarko kopjen</button><span class="dg-status" id="dg-save-status" role="status"></span>';host.prepend(tools);
+    const tools=document.createElement('div');tools.className='dg-actions';tools.innerHTML='<button type="button" class="dg-button secondary" id="dg-back">Ndeshjet e mia</button><button type="button" class="dg-button secondary" id="dg-retry-save">Ruaj përsëri</button><button type="button" class="dg-button secondary" id="dg-download">Shkarko kopjen</button><button type="button" class="dg-button secondary" id="dg-report-share">Dërgo raportin</button><button type="button" class="dg-button secondary" id="dg-report-save">Ruaj raportin (PDF)</button><span class="dg-status" id="dg-save-status" role="status"></span>';host.prepend(tools);
     tools.querySelector('#dg-back').onclick=async()=>{clearTimeout(timer);await flush();if(sending||revision!==savedRevision){alert('Ka ndryshime të paruajtura. Ruajini para se të largoheni.');return;}await dashboard();};
     tools.querySelector('#dg-retry-save').onclick=()=>{if(stopped){stopped=false}flush()};
+    tools.querySelector('#dg-report-share').onclick=()=>openReport('send');tools.querySelector('#dg-report-save').onclick=()=>openReport('save');
     tools.querySelector('#dg-download').onclick=()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='procesverbali-'+assignment.id+'.json';a.click();URL.revokeObjectURL(url);};status(revision===savedRevision?'Ruajtur në server':stopped?'Ndryshimet nuk janë ruajtur në server.':'Në pritje të ruajtjes…',stopped);
     if(currentView==='live'){const box=document.createElement('label');box.className='dg-publish';box.innerHTML=`<input id="dg-publish" type="checkbox" ${publicationBlocked?'disabled':''} ${published&&!publicationBlocked?'checked':''}><span>Shfaq këtë ndeshje live në Portal<span id="dg-publish-note" class="dg-publish-note" style="display:block"></span></span>`;tools.after(box);box.querySelector('input').onchange=e=>{published=e.target.checked;persist()};updatePublicationUI();}
   }
