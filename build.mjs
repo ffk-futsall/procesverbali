@@ -18,3 +18,4 @@ await writeFile('dist/index.html',html);await copyFile('delegate-app.js','dist/d
 await copyFile('vendor/supabase.js','dist/vendor/supabase.js');
 function sanitize(x){if(Array.isArray(x))return x.map(sanitize);if(x&&typeof x==='object'){const out={};for(const [k,v] of Object.entries(x)){if(k==='idNumber')continue;out[k]=sanitize(v)}return out}return x;}
 const registry=JSON.parse(await readFile('skuadrat.json','utf8'));await writeFile('dist/skuadrat.json',JSON.stringify(sanitize(registry)));
+await copyFile('_headers','dist/_headers');

@@ -2,7 +2,7 @@
  * Only the server-authorized delegate may read or write an assignment. */
 (() => {
   'use strict';
-  const PORTAL='https://sports-stats-live-eta.vercel.app';
+  const PORTAL='https://sports-stats-live.urim-ffkfutsall.workers.dev';
   const SUPABASE_URL='https://eglrcqyqsjbajfqzcfec.supabase.co';
   const PUBLIC_KEY='sb_publishable_J7nixSwCleuiJI4ULWfWzQ_i_dwnK7B';
   const client=window.supabase.createClient(SUPABASE_URL,PUBLIC_KEY,{auth:{storage:sessionStorage,persistSession:true,autoRefreshToken:true}});
