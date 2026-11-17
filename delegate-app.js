@@ -112,6 +112,30 @@
   function teamSnapshots(a){const t=(a&&(a.team_sheets||a.team_lists))||{};return {a:t.home||null,b:t.away||null}}
   function sideIsBlank(side){const t=data.teams[side];return !t.players.some(p=>p.name||p.shirtNo||p.idNumber)&&!t.officials.some(o=>o.name||o.idNumber)}
   function applyTeamList(side,snap){const t=TC&&TC.snapshotToTeam(snap,roles);if(!t)return false;Object.assign(data.teams[side],{kit:t.kit,players:t.players,officials:t.officials});data.teamListSync={...(data.teamListSync||{}),[side]:TC.snapshotKey(snap)};return true}
+  function mergeTeamList(side,snap){
+    const incoming=TC&&TC.snapshotToTeam(snap,roles);if(!incoming)return false;
+    const target=data.teams[side],players=target.players.map(p=>({...p}));
+    const norm=s=>String(s||'').trim().replace(/\s+/g,' ').toLowerCase();
+    const newPlayers=incoming.players.filter(p=>p.name||p.shirtNo||p.idNumber);
+    for(const p of newPlayers){
+      let i=players.findIndex(x=>x.name&&norm(x.name)===norm(p.name));
+      if(i<0&&p.shirtNo)i=players.findIndex(x=>x.shirtNo===p.shirtNo&&(!x.name||!p.name));
+      if(i>=0){players[i].name=p.name||players[i].name;players[i].shirtNo=p.shirtNo||players[i].shirtNo;players[i].idNumber=p.idNumber||players[i].idNumber;continue}
+      i=players.findIndex(x=>!x.name&&!x.shirtNo&&!x.idNumber);
+      if(i<0)return false;
+      players[i]={...p};
+    }
+    const officials=target.officials.map(o=>({...o}));
+    for(const o of incoming.officials.filter(x=>x.name||x.idNumber)){
+      const slot=officials.find(x=>!x.name&&!x.idNumber&&String(x.role||'').toLowerCase()===String(o.role||'').toLowerCase());
+      if(slot){slot.name=o.name;slot.idNumber=o.idNumber}
+    }
+    const kit={...target.kit};
+    for(const key of ['shirt','shorts','socks'])if(!kit[key]&&incoming.kit[key])kit[key]=incoming.kit[key];
+    Object.assign(target,{kit,players,officials});
+    data.teamListSync={...(data.teamListSync||{}),[side]:TC.snapshotKey(snap)};
+    return true;
+  }
   function matchNotStarted(){return !data._editLocked&&(!data.phase||data.phase==='setup')}
   function pendingTeamLists(){if(!assignment||!TC||!matchNotStarted())return [];const snaps=teamSnapshots(assignment),sync=data.teamListSync||{};return ['a','b'].filter(side=>snaps[side]&&sync[side]!==TC.snapshotKey(snaps[side]))}
   async function openAssignment(id){
@@ -120,7 +144,7 @@
     SESSION_KEY='ffk-session-'+a.id;OLD_SESSION_KEY='ffk-old-'+a.id;SAVED_KEY='ffk-saved-'+a.id;
     data=mergeData(a.draft);if(!a.draft){const m=a.match_details;data.teams.a.name=m.home||'';data.teams.b.name=m.away||'';data.matchDate=m.date||'';data.startTime=m.time||'';data.venue=m.venue||'';data.round=String(m.round||'');data.competition=(COMPETITIONS.find(c=>String(m.competition||'').toLowerCase().includes(c.toLowerCase()))||'');}
     const recovery=localStorage.getItem(backupKey());if(recovery){try{const b=JSON.parse(recovery);if(b.version===version&&confirm('U gjetën ndryshime lokale të paruajtura për këtë ndeshje. T’i rikuperojmë?')){data=mergeData(b.draft);published=!!b.published&&!publicationBlocked;revision++;}else if(b.version!==version){alert('Ekziston një kopje lokale me version tjetër. Kontaktoni administratorin para se të vazhdoni.');assignment=null;return dashboard()}}catch{}}
-    if(matchNotStarted()){const snaps=teamSnapshots(a);let applied=false;for(const side of ['a','b'])if(snaps[side]&&sideIsBlank(side)&&applyTeamList(side,snaps[side]))applied=true;if(applied){revision++;saveBackup();}}
+    if(matchNotStarted()){const snaps=teamSnapshots(a),sync=data.teamListSync||{};let applied=false;for(const side of ['a','b'])if(snaps[side]&&sync[side]!==TC.snapshotKey(snaps[side])){const ok=sideIsBlank(side)?applyTeamList(side,snaps[side]):mergeTeamList(side,snaps[side]);if(ok)applied=true}if(applied){revision++;saveBackup();}}
     root.innerHTML='';app.style.display='block';step=1;if(data._editLocked||['first','halftime','second','after_second','extra','after_extra','penalties','finished'].includes(data.phase))renderLive();else renderWizard();if(!a.draft && revision===savedRevision){revision++;saveBackup();}if(revision!==savedRevision)flush();clearInterval(accessTimer);accessTimer=setInterval(checkAccess,15000);window.scrollTo(0,0);
   }
   // Keep browser-native Enter and Tab behavior. Contain Tab only while a modal is open.

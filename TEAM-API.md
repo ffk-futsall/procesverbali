@@ -29,7 +29,12 @@ Të gjitha veprimet përveç `login` kërkojnë headerin `Authorization: Bearer 
 Ndryshimi i email-it/telefonit bëhet nga administratori.
 
 ## Lidhja me procesverbalin e delegatit
-Te `saveSheet` server-i duhet të ruajë edhe një *snapshot* (shih `buildSnapshot`), që delegati ta marrë kur hap ndeshjen:
+Kur përfaqësuesi ruan roster-in, serveri e sinkronizon edhe te lista publike `players` e Portalit
+(pa publikuar `idNumber`). Delegati e merr roster-in aktual kur hap ndeshjen, edhe nëse përfaqësuesi
+nuk e ka ruajtur ende listën e ndeshjes. Nëse ekziston listë e ruajtur për ndeshjen, ruhen shenjat
+kapiten/startues për lojtarët përkatës.
+
+`saveSheet` ruan gjithashtu një *snapshot* (shih `buildSnapshot`), që delegati ta marrë kur hap ndeshjen:
 `{kitSet, kit:{shirt,shorts,socks}, players:[{shirtNo,name,idNumber,captain,starter}], officials:[{role,name,idNumber}]}`.
 Kjo përputhet me fushat që procesverbali ka tashmë (`teams.a|b.players/officials/kit`, `captain`, `starter`).
 
@@ -44,7 +49,7 @@ ku `home` / `away` janë snapshot-et e ruajtura nga `saveSheet` për skuadrën v
 
 Sjellja e klientit:
 - Procesverbali ende nuk ka filluar dhe skuadra A/B është bosh → plotësohet automatikisht (lojtarët sipas numrit të fanellës, kapiteni, startuesit, zyrtarët sipas rolit, ngjyrat e fanellës).
-- Delegati e ka plotësuar tashmë, ose përfaqësuesi ndryshoi listën më pas → shfaqet njoftimi “Merr listën”; asgjë nuk mbishkruhet pa konfirmim.
+- Delegati e ka plotësuar tashmë → lojtarët e rinj shtohen te rreshtat bosh pa fshirë të dhënat ekzistuese. Nëse lista është e plotë, shfaqet “Merr listën”; zëvendësimi i plotë kërkon konfirmim.
 - Pasi fillon ndeshja (`phase` ≠ `setup`) ose pasi kyçet redaktimi, lista nuk preket më.
 - Server-i duhet ta kthejë `team_sheets` vetëm për delegatin e caktuar për atë ndeshje (kontrolli i caktimit që e keni tashmë te `/api/protocol`). Snapshot-i përmban numrat ID: mos i përfshini në publikimin live te Portali.
 
