@@ -38,7 +38,12 @@
   const shirtDigits = v => String(v ?? '').replace(/\D/g, '').slice(0, 2).replace(/^0+$/, '');
   function normRoster(r) {
     const players = (Array.isArray(r?.players) ? r.players : [])
-      .map(p => ({ id: str(p?.id, 40) || uid(), shirtNo: shirtDigits(p?.shirtNo), name: str(p?.name), idNumber: str(p?.idNumber, 40) }))
+      .map(p => ({
+        id: str(p?.id, 40) || uid(), shirtNo: shirtDigits(p?.shirtNo), name: str(p?.name),
+        idNumber: str(p?.idNumber, 40), photoPath: str(p?.photoPath, 300), photoName: str(p?.photoName, 160),
+        photoUrl: str(p?.photoUrl, 600), documentPath: str(p?.documentPath, 300), documentName: str(p?.documentName, 160),
+        documentType: ['passport', 'id-card'].includes(p?.documentType) ? p.documentType : ''
+      }))
       .filter(p => p.shirtNo || p.name || p.idNumber);
     const officials = (Array.isArray(r?.officials) ? r.officials : [])
       .map(o => ({ id: str(o?.id, 40) || uid(), role: str(o?.role, 40), name: str(o?.name), idNumber: str(o?.idNumber, 40) }))
@@ -249,6 +254,34 @@
       logout: token => post('logout', null, token).catch(() => { }),
       getRoster: token => post('roster', null, token),
       saveRoster: (token, roster) => post('roster-save', { roster }, token),
+      async uploadPlayerFile(token, playerId, kind, file, documentType) {
+        const ticket = await post('player-file-upload-url', {
+          playerId, kind, fileName: file?.name || '', contentType: file?.type || '', size: Number(file?.size || 0)
+        }, token);
+        const client = global.FFKSupabaseClient;
+        if (!client?.storage) throw new TeamError('UPLOAD', 'Ngarkimi nuk është gati. Rifreskoni faqen dhe provoni përsëri.', 0);
+        const { error } = await client.storage.from(ticket.bucket).uploadToSignedUrl(
+          ticket.path, ticket.token, file, { contentType: file.type, upsert: false }
+        );
+        if (error) {
+          await post('player-file-discard', { playerId, kind, path: ticket.path }, token).catch(() => {});
+          throw new TeamError('UPLOAD', error.message || 'Skedari nuk u ngarkua.', 400);
+        }
+        try {
+          const out = await post('player-file-save', {
+            playerId, kind, path: ticket.path, fileName: file.name, contentType: file.type, documentType
+          }, token);
+          return out.roster;
+        } catch (e) {
+          await post('player-file-discard', { playerId, kind, path: ticket.path }, token).catch(() => {});
+          throw e;
+        }
+      },
+      getPlayerDocument: (token, playerId) => post('player-file-download', { playerId, kind: 'document' }, token),
+      async removePlayerFile(token, playerId, kind) {
+        const out = await post('player-file-save', { playerId, kind, remove: true }, token);
+        return out.roster;
+      },
       async listMatches(token) {
         const out = await post('matches', null, token);
         return (out.matches || []).map(m => ({

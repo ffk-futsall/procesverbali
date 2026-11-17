@@ -6,6 +6,7 @@
   const SUPABASE_URL='https://eglrcqyqsjbajfqzcfec.supabase.co';
   const PUBLIC_KEY='sb_publishable_J7nixSwCleuiJI4ULWfWzQ_i_dwnK7B';
   const client=window.supabase.createClient(SUPABASE_URL,PUBLIC_KEY,{auth:{storage:sessionStorage,persistSession:true,autoRefreshToken:true}});
+  window.FFKSupabaseClient=client;
   const root=document.createElement('div');root.id='delegate-shell';document.body.prepend(root);
   const style=document.createElement('style');style.textContent=`
     #delegate-shell{font:16px/1.5 system-ui,sans-serif;color:#17243a}
