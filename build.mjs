@@ -14,7 +14,7 @@ const escStart=html.indexOf('  /* ESC: mbyll atë që është hapur sipër */',f
 if(fsStart<0||escStart<0)throw new Error('Fullscreen handler not found; review keyboard build patch');
 html=html.slice(0,fsStart)+html.slice(escStart);
 html=html.replace('if(mr&&mr.children.length){','if(mr&&mr.children.length&&mr.getClientRects().length){');
-await writeFile('dist/index.html',html);await copyFile('delegate-app.js','dist/delegate-app.js');
+await writeFile('dist/index.html',html);await copyFile('delegate-app.js','dist/delegate-app.js');await copyFile('team-core.js','dist/team-core.js');await copyFile('team-app.js','dist/team-app.js');
 await copyFile('vendor/supabase.js','dist/vendor/supabase.js');
 function sanitize(x){if(Array.isArray(x))return x.map(sanitize);if(x&&typeof x==='object'){const out={};for(const [k,v] of Object.entries(x)){if(k==='idNumber')continue;out[k]=sanitize(v)}return out}return x;}
 const registry=JSON.parse(await readFile('skuadrat.json','utf8'));await writeFile('dist/skuadrat.json',JSON.stringify(sanitize(registry)));
