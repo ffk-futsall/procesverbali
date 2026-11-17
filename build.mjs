@@ -4,7 +4,7 @@ import { mkdir,rm,copyFile,readFile,writeFile } from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});await mkdir('dist/vendor',{recursive:true});
 // Remove legacy global Enter hijacking and forced fullscreen while preserving the
 // application's existing Escape-to-close behavior. Both prevent normal keyboard use.
-let html=await readFile('index.html','utf8');
+let html=(await readFile('index.html','utf8')).replace(/\r\n/g,'\n');
 const legacyStart="<script>\ndocument.addEventListener('keydown',function(e){if(e.key!=='Enter'";
 const start=html.indexOf(legacyStart),end=html.indexOf('</script>',start);
 if(start<0||end<0)throw new Error('Legacy keyboard handler not found; review keyboard build patch');
