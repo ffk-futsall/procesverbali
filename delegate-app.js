@@ -126,7 +126,7 @@
   // Keep browser-native Enter and Tab behavior. Contain Tab only while a modal is open.
   const focusSelector='button:not([disabled]),a[href],input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   const visible=el=>!!el && el.getClientRects().length>0 && getComputedStyle(el).visibility!=='hidden';
-  const modal=()=>['.dg-password-overlay','#pdfModal','#rgModal','#modalRoot .modal-backdrop'].map(sel=>document.querySelector(sel)).find(visible)||null;
+  const modal=()=>['.dg-password-overlay','#pdfModal','#rgModal','#modalRoot .modal-backdrop','#playerDocsRoot .modal-backdrop'].map(sel=>document.querySelector(sel)).find(visible)||null;
   const focusables=container=>Array.from(container.querySelectorAll(focusSelector)).filter(el=>visible(el)&&el.tabIndex>=0);
   let activeModal=null,returnFocus=null,lastOutsideFocus=null,focusSyncQueued=false;
   document.addEventListener('focusin',e=>{const m=modal();if(!m||!m.contains(e.target))lastOutsideFocus=e.target;});
