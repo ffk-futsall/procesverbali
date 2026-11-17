@@ -4,15 +4,15 @@ import { mkdir,rm,copyFile,readFile,writeFile } from 'node:fs/promises';
 await rm('dist',{recursive:true,force:true});await mkdir('dist/vendor',{recursive:true});
 // Remove legacy global Enter hijacking and forced fullscreen while preserving the
 // application's existing Escape-to-close behavior. Both prevent normal keyboard use.
-let html=await readFile('index.html','utf8');
-const legacyStart="<script>\ndocument.addEventListener('keydown',function(e){if(e.key!=='Enter'";
-const start=html.indexOf(legacyStart),end=html.indexOf('</script>',start);
-if(start<0||end<0)throw new Error('Legacy keyboard handler not found; review keyboard build patch');
-html=html.slice(0,start)+html.slice(end+'</script>'.length);
-const fsStart=html.indexOf('  var d=document.documentElement,armed=true;',html.indexOf('<script id="ffk-fs-esc">'));
-const escStart=html.indexOf('  /* ESC: mbyll atë që është hapur sipër */',fsStart);
-if(fsStart<0||escStart<0)throw new Error('Fullscreen handler not found; review keyboard build patch');
-html=html.slice(0,fsStart)+html.slice(escStart);
+let html=(await readFile('index.html','utf8')).replace(/\r\n?/g,'\n');
+// Remove the legacy Enter handler when present. The build remains safe when a
+// source checkout already has it removed or its line endings differ.
+const legacyScript=/<script>\s*document\.addEventListener\(['"]keydown['"],\s*function\(e\)\s*\{\s*if\s*\(e\.key!==['"]Enter['"][\s\S]*?<\/script>/;
+html=html.replace(legacyScript,'');
+// Strip only the forced-fullscreen portion; keep the site's Escape-to-close handler.
+const fsStart=html.indexOf('var d=document.documentElement,armed=true;');
+const escStart=html.indexOf('/* ESC: mbyll atë që është hapur sipër */',fsStart);
+if(fsStart>=0&&escStart>=0)html=html.slice(0,fsStart)+html.slice(escStart);
 html=html.replace('if(mr&&mr.children.length){','if(mr&&mr.children.length&&mr.getClientRects().length){');
 await writeFile('dist/index.html',html);await copyFile('delegate-app.js','dist/delegate-app.js');await copyFile('team-core.js','dist/team-core.js');await copyFile('team-app.js','dist/team-app.js');
 await copyFile('vendor/supabase.js','dist/vendor/supabase.js');
