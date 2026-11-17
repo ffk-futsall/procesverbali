@@ -14,3 +14,12 @@ test('production build preserves native keyboard behavior and modal Escape',asyn
   assert.ok(delegate.includes('e.key!==\'Tab\''));
   assert.ok(delegate.includes("root.querySelector('#dg-username').focus()"));
 });
+
+test('delegati lidh listën e skuadrës nga assignment.team_sheets',async()=>{
+  execFileSync(process.execPath,['build.mjs'],{stdio:'pipe'});
+  const delegate=await readFile('dist/delegate-app.js','utf8');
+  const core=await readFile('dist/team-core.js','utf8');
+  assert.ok(delegate.includes('team_sheets'));
+  assert.ok(delegate.includes('applyTeamList'));
+  assert.ok(core.includes('snapshotToTeam'));
+});
