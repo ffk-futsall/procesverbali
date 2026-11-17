@@ -1,32 +1,32 @@
 # Portali i skuadrave: kontrata e API-së
 
-Ndërfaqja (`team-app.js`) flet me `PORTAL + '/api/team/...'` përmes `createPortalAdapter` te `team-core.js`.
-Deri sa Portali të i zbatojë këto endpoint-e, ndërfaqja provohet me **modin demo**: hapni `…/#demo`
-(përdorues `demo1` / `Demo-1234` te skuadra e parë, `demo2` te e dyta; kodi shfaqet në ekran).
+Ndërfaqja (`team-app.js`) flet me `PORTAL + '/api/team-auth'` (POST me `action`) përmes `createPortalAdapter` te `team-core.js`.
+Nuk ka zgjedhje skuadre në kyçje: përfaqësuesi shkruan vetëm përdoruesin dhe fjalëkalimin, dhe skuadra
+merret automatikisht nga llogaria e krijuar te **Sports Stats Live → Admin → Përfaqësuesit e skuadrave**.
+Modi demo provohet me `…/#demo` (përdorues `demo1` / `Demo-1234`, `demo2` / `Demo-1234`).
 Hapni `…/#skuadra` për të shkuar drejt te kyçja e skuadrës në prodhim.
 
 **Rregulla të detyrueshme në server (klienti nuk mund t’i zbatojë me siguri):**
 1. Skuadra gjithmonë nxirret nga token-i i sesionit, kurrë nga trupi ose URL-ja e kërkesës.
-2. `/auth/start`: kontrollo fillimisht përdoruesin+fjalëkalimin; vetëm pastaj kontrollo që përdoruesi është i caktuar për `teamId`, përndryshe `403 TEAM_MISMATCH`. Mos zbulo nëse përdoruesi ekziston.
-3. Kodet: 6 shifra, gjenerim kriptografik, ruhen të hash-uara, skadojnë në 10 min, maks. 5 përpjekje, pritje 30 s për ridërgim, kufizim për IP/përdorues. Dërgohen me email ose SMS (jo kthehen në përgjigje).
+2. `login`: kontrollo fillimisht përdoruesin+fjalëkalimin; skuadra merret nga përfaqësuesi. Mos zbulo nëse përdoruesi ekziston.
+3. Nuk ka kod verifikimi: pas fjalëkalimit të saktë hapet sesioni (12 orë); pas 5 fjalëkalimeve të gabuar bllokim 1 minutë. Token-i i sesionit ruhet vetëm si hash.
 4. Çdo `matchId` verifikohet që i përket skuadrës së sesionit (`403 FORBIDDEN`). Ndeshja e kyçur refuzon shkrimin (`423 LOCKED`).
 5. Server-i përsërit validimin (shih `validateRoster` / `validateSheet`): lojtar ≤ 14 në listë, ≤ 5 startues, ≤ 1 kapiten, numra fanelle 1–99 pa dublikim.
 6. Gabimet kthehen si `{ "error": "mesazh shqip", "code": "KOD", "details": [..] }`.
 
-| Metoda | Rruga | Trupi | Përgjigja |
-|---|---|---|---|
-| GET | `/teams` | – | `{teams:[{id,name}]}` (publike) |
-| POST | `/auth/start` | `{username,password,teamId}` | `{challengeId, methods:[{type:'email'\|'phone', masked}]}` |
-| POST | `/auth/send` | `{challengeId,method}` | `{sent:true, resendAfter:30, destination}` |
-| POST | `/auth/verify` | `{challengeId,code}` | `{token, rep:{name,username}, team:{id,name}}` |
-| POST | `/auth/logout` | – | `{}` |
-| GET | `/me` | – | `{rep, team}` |
-| GET / PUT | `/roster` | `{players:[{id,shirtNo,name,idNumber}], officials:[{id,role,name,idNumber}], kits:{first\|second\|third:{shirt,shorts,socks}}}` | i njëjti objekt + `version` |
-| GET | `/matches` | – | `{matches:[{id,home,away,date,time,venue,competition,round,locked,side,submitted}]}` |
-| GET / PUT | `/matches/:id/sheet` | `{kitSet,kit:{shirt,shorts,socks},players:[{id,captain,starter}],officialIds:[]}` | `{locked, submitted, sheet}` |
-| GET | `/contacts` | – | `{email,phone}` (të maskuara) |
-| POST | `/contacts/start` | `{type:'email'\|'phone', value}` | `{sent, resendAfter, destination}` |
-| POST | `/contacts/confirm` | `{code}` | `{email,phone}` (të maskuara) |
+| Veprimi (`POST /api/team-auth`) | Trupi | Përgjigja |
+|---|---|---|
+| `GET ?action=teams` | – | `{teams:[{id,name,league}]}` (publike) |
+| `login` | `{username,password}` | `{sessionToken, expiresAt, representative, team:{id,name,league}}` |
+| `logout` | – | `{ok:true}` |
+| `me` | – | `{representative, team}` |
+| `roster` / `roster-save` | `{roster}` | `{players:[{id,shirtNo,name,idNumber}], officials:[{id,role,name,idNumber}], kits:{first\|second\|third:{shirt,shorts,socks}}, version}` |
+| `matches` | – | `{matches:[{id,home,away,date,time,venue,competition,round,locked,side,submitted}]}` |
+| `sheet` / `sheet-save` | `{matchId, sheet:{kitSet,kit:{shirt,shorts,socks},players:[{id,captain,starter}],officialIds:[]}}` | `{locked, submitted, sheet}` |
+| `contacts` | – | `{email,phone}` (të maskuara) |
+
+Të gjitha veprimet përveç `login` kërkojnë headerin `Authorization: Bearer <sessionToken>`.
+Ndryshimi i email-it/telefonit bëhet nga administratori.
 
 ## Lidhja me procesverbalin e delegatit
 Te `saveSheet` server-i duhet të ruajë edhe një *snapshot* (shih `buildSnapshot`), që delegati ta marrë kur hap ndeshjen:
@@ -49,5 +49,4 @@ Sjellja e klientit:
 - Server-i duhet ta kthejë `team_sheets` vetëm për delegatin e caktuar për atë ndeshje (kontrolli i caktimit që e keni tashmë te `/api/protocol`). Snapshot-i përmban numrat ID: mos i përfshini në publikimin live te Portali.
 
 ## Supabase
-Nëse përdorni Supabase Auth për kodet, `signInWithOtp({email})` / `verifyOtp` mbulon email-in; për SMS duhet ofrues (Twilio etj.).
-Çfarëdo qoftë, kontrolli i skuadrës së caktuar duhet të bëhet në server (RLS ose Worker).
+Kyçja bëhet me përdorues+fjalëkalim në Worker (`/api/team-auth`); nuk përdoret OTP/kod. Kontrolli i skuadrës së caktuar bëhet gjithmonë në server (RLS ose Worker).

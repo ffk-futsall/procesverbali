@@ -1,4 +1,4 @@
-/* Portali i skuadrave: kyçja e përfaqësuesit (me kod verifikimi), lojtarët, zyrtarët, fanellat dhe lista e ndeshjes.
+/* Portali i skuadrave: kyçja e përfaqësuesit (me fjalëkalim), lojtarët, zyrtarët, fanellat dhe lista e ndeshjes.
  * Të dhënat vijnë nga TeamCore (adapter Portal ose DEMO). Hapni faqen me #demo për modin demo. */
 (() => {
   'use strict';
@@ -45,12 +45,12 @@
     return adapter;
   }
 
-  const S = { token: '', rep: null, team: null, roster: null, saved: '', matches: [], tab: 'matches', match: null, sheet: null, sheetSaved: '', sheetLocked: false, challenge: null, timer: null, busy: false };
+  const S = { token: '', rep: null, team: null, roster: null, saved: '', matches: [], tab: 'matches', match: null, sheet: null, sheetSaved: '', sheetLocked: false, timer: null, busy: false };
   const dirty = () => !!S.roster && JSON.stringify(S.roster) !== S.saved;
   const sheetDirty = () => !!S.sheet && JSON.stringify(S.sheet) !== S.sheetSaved;
   const T = () => S.token;
   const hideOthers = () => { const app = document.getElementById('app'); if (app) app.style.display = 'none'; const d = document.getElementById('delegate-shell'); if (d) d.innerHTML = ''; };
-  const demoBanner = () => demo ? '<div class="tm-demo"><b style="font-size:inherit;letter-spacing:0">MOD DEMO.</b> Të dhënat ruhen vetëm në këtë shfletues dhe kodet shfaqen në ekran në vend që të dërgohen me email/SMS. Provoni: <code>demo1</code> / <code>Demo-1234</code> (skuadra e parë) ose <code>demo2</code> (skuadra e dytë).</div>' : '';
+  const demoBanner = () => demo ? '<div class="tm-demo"><b style="font-size:inherit;letter-spacing:0">MOD DEMO.</b> Të dhënat ruhen vetëm në këtë shfletues. Provoni: <code>demo1</code> / <code>Demo-1234</code> (skuadra e parë) ose <code>demo2</code> / <code>Demo-1234</code> (skuadra e dytë).</div>' : '';
   const page = (inner, cls = '') => { clearInterval(S.timer); hideOthers(); shell.innerHTML = `<main class="tm-screen"><div class="${cls || 'tm-wrap'}">${inner}</div></main>`; window.scrollTo(0, 0); };
   const setMsg = (text, bad = true) => { const el = shell.querySelector('[data-msg]'); if (el) { el.textContent = text || ''; el.classList.toggle('tm-err', bad); el.classList.toggle('tm-ok', !bad); } };
   const fail = e => { if (e && e.code === 'UNAUTHENTICATED') { sessionStorage.removeItem(TOKEN_KEY); Object.assign(S, { token: '', roster: null }); showLogin('Sesioni ka përfunduar. Kyçuni përsëri.'); return; } setMsg(e?.details?.length > 1 ? e.details.join(' ') : (e?.message || String(e))); };
@@ -59,55 +59,27 @@
 
   /* ---------- Kyçja me verifikim ---------- */
   async function showLogin(notice = '') {
-    const a = await getAdapter(); let teams = [];
-    try { teams = await a.listTeams(); } catch { }
+    const a = await getAdapter();
     page(`<div class="tm-card tm-login"><div class="tm-seg" role="group" aria-label="Lloji i kyçjes"><button class="tm-btn sec" type="button" data-act="to-delegate" aria-pressed="false">Delegat</button><button class="tm-btn" type="button" aria-pressed="true">Skuadër</button></div>
       <h1>Procesverbali</h1><p>Kyçja e përfaqësuesit të skuadrës</p>${demoBanner()}
       <form id="tm-login" novalidate>
-        <label class="tm-label" for="tm-team">Skuadra</label><select class="tm-input" id="tm-team" required><option value="">— Zgjidhni skuadrën —</option>${teams.map(t => `<option value="${esc(t.id)}">${esc(t.name)}</option>`).join('')}</select>
         <label class="tm-label" for="tm-user">Emri i përdoruesit</label><input class="tm-input" id="tm-user" autocomplete="username" maxlength="40" required>
         <label class="tm-label" for="tm-pass">Fjalëkalimi</label><input class="tm-input" id="tm-pass" type="password" autocomplete="current-password" required>
+        <p class="tm-meta" style="margin-top:12px">Skuadra hapet automatikisht sipas llogarisë suaj. Nuk kërkohet kod verifikimi.</p>
         <p class="tm-err" data-msg role="alert">${esc(notice)}</p><button class="tm-btn">Vazhdo</button></form></div>`, 'tm-wrap');
-    shell.querySelector('#tm-team').focus();
+    shell.querySelector('#tm-user').focus();
     shell.querySelector('[data-act="to-delegate"]').onclick = toDelegate;
     shell.querySelector('#tm-login').onsubmit = ev => { ev.preventDefault(); busy(ev.currentTarget.querySelector('button'), async () => {
-      const teamId = shell.querySelector('#tm-team').value, username = shell.querySelector('#tm-user').value, password = shell.querySelector('#tm-pass').value;
-      if (!teamId) throw new Error('Zgjidhni skuadrën.'); if (!username.trim() || !password) throw new Error('Shkruani emrin e përdoruesit dhe fjalëkalimin.');
-      S.challenge = await a.startLogin({ username, password, teamId }); S.challenge.demoCode = ''; showMethod();
-    }); };
-  }
-  function toDelegate() { shell.innerHTML = ''; Object.assign(S, { challenge: null }); if (window.FFKShell) window.FFKShell.login(); }
-  function showMethod() {
-    const ms = S.challenge.methods || [];
-    page(`<div class="tm-card tm-login"><h1>Verifikimi</h1><p>Për siguri, do t’ju dërgojmë një kod njëpërdorimsh. Zgjidhni ku ta merrni.</p>${demoBanner()}
-      <form id="tm-method">${ms.length ? ms.map((m, i) => `<label class="tm-radio"><input type="radio" name="m" value="${m.type}" ${i === 0 ? 'checked' : ''}><span><b>${m.type === 'email' ? 'Email' : 'Numri i telefonit'}</b><br><span class="tm-meta">${esc(m.masked)}</span></span></label>`).join('') : '<p class="tm-err">Ky përdorues nuk ka email as telefon të regjistruar. Kontaktoni administratorin.</p>'}
-      <p class="tm-err" data-msg role="alert"></p><button class="tm-btn" ${ms.length ? '' : 'disabled'}>Dërgo kodin</button><button type="button" class="tm-btn sec" data-act="login-back">Anulo</button></form></div>`, 'tm-wrap');
-    shell.querySelector('[data-act="login-back"]').onclick = () => showLogin();
-    shell.querySelector('#tm-method').onsubmit = ev => { ev.preventDefault(); busy(ev.currentTarget.querySelector('button'), async () => {
-      const method = shell.querySelector('input[name="m"]:checked')?.value; const r = await (await getAdapter()).sendCode({ challengeId: S.challenge.challengeId, method });
-      S.challenge.sent = r; S.challenge.sentAt = Date.now(); showCode();
-    }); };
-  }
-  function showCode() {
-    const c = S.challenge, r = c.sent || {};
-    page(`<div class="tm-card tm-login"><h1>Shkruani kodin</h1><p>Kodi 6-shifror u dërgua te <b>${esc(r.destination || '')}</b>. Vlen ${LIMITS.codeTtlMs / 60000} minuta.</p>
-      ${demo && r.demoCode ? `<div class="tm-demo">Kodi demo: <b>${esc(r.demoCode)}</b></div>` : ''}
-      <form id="tm-code"><label class="tm-label" for="tm-c">Kodi i verifikimit</label><input class="tm-input" id="tm-c" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
-      <p class="tm-err" data-msg role="alert"></p><button class="tm-btn">Verifiko dhe kyçu</button><button type="button" class="tm-btn sec" id="tm-resend" disabled></button><button type="button" class="tm-btn sec" data-act="login-back">Anulo</button></form></div>`, 'tm-wrap');
-    const input = shell.querySelector('#tm-c'), resend = shell.querySelector('#tm-resend'); input.focus();
-    input.oninput = () => { input.value = input.value.replace(/\D/g, '').slice(0, 6); };
-    const wait = () => Math.max(0, Math.ceil(((r.resendAfter || 30) * 1000 - (Date.now() - c.sentAt)) / 1000));
-    const tick = () => { const w = wait(); resend.disabled = w > 0; resend.textContent = w > 0 ? `Dërgo përsëri (${w}s)` : 'Dërgo kodin përsëri'; };
-    tick(); S.timer = setInterval(() => { if (!resend.isConnected) { clearInterval(S.timer); return; } tick(); }, 1000);
-    shell.querySelector('[data-act="login-back"]').onclick = () => showLogin();
-    resend.onclick = () => busy(resend, async () => { const out = await (await getAdapter()).sendCode({ challengeId: c.challengeId, method: (c.methods.find(m => m.masked === r.destination) || c.methods[0]).type }); c.sent = out; c.sentAt = Date.now(); showCode(); });
-    shell.querySelector('#tm-code').onsubmit = ev => { ev.preventDefault(); busy(ev.currentTarget.querySelector('button'), async () => {
-      if (!/^\d{6}$/.test(input.value)) throw new Error('Shkruani kodin 6-shifror.');
-      let out; try { out = await (await getAdapter()).verifyCode({ challengeId: c.challengeId, code: input.value }); } catch (e) { input.value = ''; input.focus(); throw e; }
-      S.token = out.token; S.rep = out.rep; S.team = out.team; try { sessionStorage.setItem(TOKEN_KEY, out.token); } catch { }
+      const username = shell.querySelector('#tm-user').value.trim(), password = shell.querySelector('#tm-pass').value;
+      if (!username || !password) throw new Error('Shkruani emrin e përdoruesit dhe fjalëkalimin.');
+      // Pa kod verifikimi: sesioni hapet direkt dhe skuadra vjen nga llogaria.
+      const out = await a.startLogin({ username, password });
+      S.token = out.token; S.rep = out.rep; S.team = out.team;
+      try { sessionStorage.setItem(TOKEN_KEY, out.token); } catch { }
       await loadAll(); S.tab = 'matches'; render();
     }); };
   }
+  function toDelegate() { shell.innerHTML = ''; if (window.FFKShell) window.FFKShell.login(); }
 
   /* ---------- Ngarkimi dhe pamja kryesore ---------- */
   async function loadAll() {
@@ -173,24 +145,13 @@
     return `<div class="tm-card"><h2>Fanellat</h2><p class="tm-meta">Regjistroni ngjyrat e tri setave. Për çdo ndeshje zgjidhet seti që luhet.</p><div class="tm-kits">${KIT_SETS.map(([k, l]) => `<div class="tm-kit"><h3>${l}</h3>${[['shirt', 'Maica'], ['shorts', 'Shorcet'], ['socks', 'Qorapet']].map(([f, lb]) => `<label class="tm-label" style="margin:8px 0 3px">${lb}</label><input class="tm-input" data-kitset="${k}" data-f="${f}" maxlength="40" value="${esc(S.roster.kits[k][f])}" placeholder="p.sh. e kuqe"> `).join('')}</div>`).join('')}</div></div>`;
   }
 
-  /* ---------- Llogaria dhe verifikimi ---------- */
+  /* ---------- Llogaria ---------- */
   function securityTab() {
-    return `<div class="tm-card"><h2>Verifikimi i kyçjes</h2><p>Çdo kyçje kërkon një kod njëpërdorimsh që dërgohet me email ose SMS. Ky përdorues mund të hyjë vetëm te skuadra <b>${esc(S.team.name)}</b>.</p><div id="tm-contacts" class="tm-meta">Duke ngarkuar…</div></div>
-    <div class="tm-card"><h2>Ndrysho emailin ose telefonin</h2><div id="tm-change"><form id="tm-contact-form"><label class="tm-label" for="tm-ct">Lloji</label><select class="tm-input" id="tm-ct"><option value="email">Email</option><option value="phone">Telefon</option></select><label class="tm-label" for="tm-cv">Vlera e re</label><input class="tm-input" id="tm-cv" placeholder="emri@shembull.com ose +38344123456" maxlength="120" required><button class="tm-btn">Dërgo kodin e verifikimit</button></form></div></div>`;
+    return `<div class="tm-card"><h2>Llogaria</h2><p>Ky përdorues hyn vetëm te skuadra <b>${esc(S.team.name)}</b>. Kyçja bëhet me emrin e përdoruesit dhe fjalëkalimin tuaj, pa kod shtesë.</p><div id="tm-contacts" class="tm-meta">Duke ngarkuar…</div><p class="tm-meta" style="margin-top:12px">Për të ndryshuar emailin, telefonin ose fjalëkalimin, kontaktoni administratorin.</p></div>`;
   }
   async function loadContacts() {
     const box = shell.querySelector('#tm-contacts'); if (!box) return;
     try { const c = await (await getAdapter()).getContacts(T()); box.innerHTML = `Email: <b>${esc(c.email || 'nuk është vendosur')}</b><br>Telefon: <b>${esc(c.phone || 'nuk është vendosur')}</b>`; } catch (e) { fail(e); }
-  }
-  function wireContactForm() {
-    const form = shell.querySelector('#tm-contact-form'); if (!form) return;
-    form.onsubmit = ev => { ev.preventDefault(); busy(form.querySelector('button'), async () => {
-      const type = shell.querySelector('#tm-ct').value, value = shell.querySelector('#tm-cv').value, a = await getAdapter();
-      const r = await a.startContactChange(T(), { type, value });
-      shell.querySelector('#tm-change').innerHTML = `<p>Kodi u dërgua te <b>${esc(r.destination || '')}</b>.</p>${demo && r.demoCode ? `<div class="tm-demo">Kodi demo: <b>${esc(r.demoCode)}</b></div>` : ''}<form id="tm-contact-code"><label class="tm-label" for="tm-cc">Kodi 6-shifror</label><input class="tm-input" id="tm-cc" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required><button class="tm-btn">Konfirmo</button></form>`;
-      const cc = shell.querySelector('#tm-cc'); cc.focus(); cc.oninput = () => { cc.value = cc.value.replace(/\D/g, '').slice(0, 6); };
-      shell.querySelector('#tm-contact-code').onsubmit = e2 => { e2.preventDefault(); busy(e2.currentTarget.querySelector('button'), async () => { await a.confirmContactChange(T(), { code: cc.value }); render(); setMsg('Kontakti u ndryshua.', false); }); };
-    }); };
   }
 
   /* ---------- Ngjarjet ---------- */
@@ -232,7 +193,7 @@
     if (el.dataset.st) { const p = sh.players.find(x => x.id === el.dataset.st); if (!p) return; if (el.checked && sh.players.filter(x => x.starter).length >= LIMITS.starters) { el.checked = false; return; } p.starter = el.checked; rerender(`[data-st="${el.dataset.st}"]`); return; }
     if (el.dataset.off) { const id = el.dataset.off; sh.officialIds = el.checked ? [...new Set([...sh.officialIds, id])] : sh.officialIds.filter(x => x !== id); }
   });
-  function afterRender() { if (S.tab === 'security' && !S.match) { loadContacts(); wireContactForm(); } }
+  function afterRender() { if (S.tab === 'security' && !S.match) loadContacts(); }
   const origRender = render; render = function () { origRender(); afterRender(); };
   window.addEventListener('beforeunload', e => { if (dirty() || sheetDirty()) { e.preventDefault(); e.returnValue = ''; } });
 

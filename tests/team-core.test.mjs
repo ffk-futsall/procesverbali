@@ -15,16 +15,14 @@ async function setup(clock={t:Date.now()}){
   const a=C.createLocalAdapter({storage:mem(),now:()=>clock.t});
   return {C,a,clock};
 }
-async function login(a,{username='demo1',password='Demo-1234',teamId='demo-a',method='email',code}={}){
-  const ch=await a.startLogin({username,password,teamId});
-  const sent=await a.sendCode({challengeId:ch.challengeId,method});
-  return a.verifyCode({challengeId:ch.challengeId,code:code??sent.demoCode});
+async function login(a,{username='demo1',password='Demo-1234',teamId}={}){
+  return a.startLogin({username,password,...(teamId?{teamId}:{})});
 }
 
-test('kyçja kërkon fjalëkalim, skuadër të caktuar dhe kod verifikimi',async()=>{
+test('kyçja kërkon fjalëkalim dhe hap sesionin direkt, pa kod verifikimi',async()=>{
   const {a}=await setup();
   const s=await login(a);
-  assert.equal(s.team.id,'demo-a');
+  assert.ok(s.token);assert.equal(s.team.id,'demo-a');
   await assert.rejects(()=>a.startLogin({username:'demo1',password:'gabim',teamId:'demo-a'}),{code:'INVALID_CREDENTIALS'});
   await assert.rejects(()=>a.startLogin({username:'asnjeri',password:'x',teamId:'demo-a'}),{code:'INVALID_CREDENTIALS'});
 });
@@ -36,31 +34,15 @@ test('përfaqësuesi nuk mund të kyçet te skuadra për të cilën nuk është 
   await assert.rejects(()=>a.startLogin({username:'demo1',password:'gabim',teamId:'demo-b'}),{code:'INVALID_CREDENTIALS'});
 });
 
-test('kodi i gabuar refuzohet dhe pas 5 përpjekjesh kyçja anulohet',async()=>{
+test('pa zgjedhur skuadrën, ajo merret automatikisht nga llogaria e përfaqësuesit',async()=>{
   const {a}=await setup();
-  const ch=await a.startLogin({username:'demo1',password:'Demo-1234',teamId:'demo-a'});
-  const sent=await a.sendCode({challengeId:ch.challengeId,method:'phone'});
-  const wrong=sent.demoCode==='000000'?'111111':'000000';
-  for(let i=0;i<5;i++)await assert.rejects(()=>a.verifyCode({challengeId:ch.challengeId,code:wrong}),{code:'INVALID_CODE'});
-  await assert.rejects(()=>a.verifyCode({challengeId:ch.challengeId,code:sent.demoCode}),{code:'TOO_MANY'});
-  await assert.rejects(()=>a.verifyCode({challengeId:ch.challengeId,code:sent.demoCode}),{code:'CHALLENGE_EXPIRED'});
+  const s=await a.startLogin({username:'demo2',password:'Demo-1234'});
+  assert.equal(s.team.id,'demo-b');assert.equal(s.team.name,'KF Demo Gjilani');assert.ok(s.token);
+  assert.equal((await a.me(s.token)).team.id,'demo-b');
 });
 
-test('kodi skadon dhe dërgimi i përsëritur ka pritje',async()=>{
+test('sesioni skadon dhe pa sesion nuk ka qasje',async()=>{
   const {a,clock}=await setup();
-  const ch=await a.startLogin({username:'demo1',password:'Demo-1234',teamId:'demo-a'});
-  const sent=await a.sendCode({challengeId:ch.challengeId,method:'email'});
-  await assert.rejects(()=>a.sendCode({challengeId:ch.challengeId,method:'email'}),{code:'TOO_SOON'});
-  clock.t+=11*60e3;
-  await assert.rejects(()=>a.verifyCode({challengeId:ch.challengeId,code:sent.demoCode}),{code:'CODE_EXPIRED'});
-  const again=await a.sendCode({challengeId:ch.challengeId,method:'email'});
-  assert.ok((await a.verifyCode({challengeId:ch.challengeId,code:again.demoCode})).token);
-});
-
-test('pa kod nuk ka sesion dhe sesioni skadon',async()=>{
-  const {a,clock}=await setup();
-  const ch=await a.startLogin({username:'demo1',password:'Demo-1234',teamId:'demo-a'});
-  await assert.rejects(()=>a.verifyCode({challengeId:ch.challengeId,code:'123456'}),{code:'NO_CODE'});
   await assert.rejects(()=>a.getRoster('fals'),{code:'UNAUTHENTICATED'});
   const s=await login(a);
   await a.getRoster(s.token);
@@ -129,24 +111,26 @@ test('lista e ndeshjes: kufijtë 14 / 5 / 1 kapiten, fanellat dhe kyçja',async(
   await assert.rejects(()=>a.getSheet(s.token,'m-ekziston-jo'),{code:'FORBIDDEN'});
 });
 
-test('ndryshimi i kontaktit kërkon kod verifikimi',async()=>{
-  const {a,clock}=await setup();const s=await login(a);
-  await assert.rejects(()=>a.startContactChange(s.token,{type:'email',value:'jo-email'}),{code:'VALIDATION'});
-  await assert.rejects(()=>a.startContactChange(s.token,{type:'phone',value:'044123456'}),{code:'VALIDATION'});
-  const r=await a.startContactChange(s.token,{type:'email',value:'i.ri@shembull.com'});
-  await assert.rejects(()=>a.confirmContactChange(s.token,{code:r.demoCode==='000000'?'111111':'000000'}),{code:'INVALID_CODE'});
-  const c=await a.confirmContactChange(s.token,{code:r.demoCode});
-  assert.equal(c.email,'i***@shembull.com');
-  clock.t+=1;
-});
-
-test('adapteri i portalit dërgon token dhe përkthen gabimet',async()=>{
+test('adapteri i portalit flet me API-në e vërtetë (action) dhe përkthen përgjigjet',async()=>{
   const C=await load();const calls=[];
-  const fetchImpl=async(url,o)=>{calls.push({url,o});return {ok:calls.length!==2,status:calls.length===2?403:200,json:async()=>calls.length===2?{error:'Jo i caktuar',code:'TEAM_MISMATCH'}:{players:[],officials:[],kits:{}}}};
+  const fetchImpl=async(url,o)=>{
+    calls.push({url,o});const body=JSON.parse(o.body);
+    if(body.action==='roster')return {ok:true,status:200,json:async()=>({players:[],officials:[],kits:{first:{shirt:'',shorts:'',socks:''}}})};
+    if(body.action==='login')return {ok:true,status:200,json:async()=>({sessionToken:'TOK',expiresAt:'2026-11-18T00:00:00Z',representative:{firstName:'Arben',lastName:'Krasniqi',username:'arben'},team:{id:'t1',name:'Prishtina'}})};
+    return {ok:true,status:200,json:async()=>({})};
+  };
   const p=C.createPortalAdapter({portal:'https://p.example',fetchImpl});
   await p.getRoster('TOK');
-  assert.equal(calls[0].url,'https://p.example/api/team/roster');assert.equal(calls[0].o.headers.Authorization,'Bearer TOK');
-  await assert.rejects(()=>p.startLogin({username:'u',password:'p',teamId:'t'}),{code:'TEAM_MISMATCH',status:403});
+  assert.equal(calls[0].url,'https://p.example/api/team-auth');
+  assert.deepEqual(JSON.parse(calls[0].o.body),{action:'roster'});
+  assert.equal(calls[0].o.headers.Authorization,'Bearer TOK');
+  // kyçja kthen sesionin direkt, pa kod verifikimi
+  const v=await p.startLogin({username:'u',password:'p'});
+  assert.equal(v.token,'TOK');assert.equal(v.rep.name,'Arben Krasniqi');assert.equal(v.team.name,'Prishtina');
+  assert.deepEqual(JSON.parse(calls[1].o.body),{action:'login',username:'u',password:'p'});
+  // skuadra e gabuar refuzohet nga serveri
+  const bad=C.createPortalAdapter({portal:'https://p.example',fetchImpl:async()=>({ok:false,status:403,json:async()=>({error:'Jo i caktuar',code:'TEAM_MISMATCH'})})});
+  await assert.rejects(()=>bad.startLogin({username:'u',password:'p',teamId:'t2'}),{code:'TEAM_MISMATCH',status:403});
 });
 
 test('maskimi i kontakteve',async()=>{

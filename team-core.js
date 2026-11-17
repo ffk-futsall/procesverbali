@@ -1,8 +1,8 @@
 /* Logjika e portalit të skuadrave (pa DOM, e testueshme).
  *
  * Dy adapterë me të njëjtën ndërfaqe:
- *  - createPortalAdapter: flet me Portalin (/api/team/...). Autorizimi dhe kodet e verifikimit
- *    zbatohen NË SERVER. Kontrata është në TEAM-API.md.
+ *  - createPortalAdapter: flet me Portalin (POST /api/team-auth). Autorizimi zbatohet NË SERVER.
+ *    Kontrata është në TEAM-API.md. Kyçja është vetëm me përdorues + fjalëkalim (pa kod).
  *  - createLocalAdapter: MOD DEMO, ruan gjithçka në shfletues. Nuk është siguri e vërtetë;
  *    shërben vetëm për provë para se të lidhet Portali.
  */
@@ -13,8 +13,7 @@
   const KIT_SETS = [['first', 'Fanella e parë'], ['second', 'Fanella e dytë'], ['third', 'Fanella e tretë']];
   const LIMITS = {
     squad: 14, starters: 5,
-    challengeTtlMs: 15 * 60e3, codeTtlMs: 10 * 60e3, resendMs: 30e3,
-    maxCodeAttempts: 5, maxLoginFails: 5, lockMs: 60e3, sessionMs: 8 * 3600e3
+    maxLoginFails: 5, lockMs: 60e3, sessionMs: 8 * 3600e3
   };
 
   class TeamError extends Error {
@@ -28,7 +27,6 @@
     const a = new Uint8Array(24); global.crypto.getRandomValues(a);
     return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
   }
-  function sixDigits() { const a = new Uint32Array(1); global.crypto.getRandomValues(a); return String(a[0] % 1000000).padStart(6, '0'); }
 
   /* ---------- Normalizim dhe validim ---------- */
   const blankKits = () => ({ first: { shirt: '', shorts: '', socks: '' }, second: { shirt: '', shorts: '', socks: '' }, third: { shirt: '', shorts: '', socks: '' } });
@@ -126,8 +124,6 @@
   /* ---------- Kontaktet ---------- */
   const maskEmail = e => { const [u, d] = String(e || '').split('@'); return u && d ? u[0] + '***@' + d : ''; };
   const maskPhone = p => { const s = String(p || ''); return s.length < 7 ? '' : s.slice(0, 4) + ' ' + '•'.repeat(Math.max(2, s.length - 6)) + ' ' + s.slice(-2); };
-  const cleanPhone = p => String(p || '').replace(/[\s()-]/g, '');
-  const validContact = (type, v) => type === 'email' ? /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) && v.length <= 120 : type === 'phone' ? /^\+\d{8,15}$/.test(v) : false;
 
   /* ---------- Adapteri LOKAL (DEMO) ---------- */
   function createLocalAdapter(opts = {}) {
@@ -148,25 +144,13 @@
         v: 1, teams: Object.fromEntries(base.map(t => [t.id, t])),
         reps: base.map((t, i) => ({ id: 'rep' + (i + 1), username: 'demo' + (i + 1), password: 'Demo-1234', teamId: t.id, name: 'Përfaqësues Demo ' + (i + 1), email: 'demo' + (i + 1) + '@example.com', phone: '+3834400' + (i + 1) + '00' })),
         matches: [m(1, A, B, 3, '19:00'), m(2, B, A, 10, '20:00'), m(3, A, B, -7, '18:30', true)],
-        sheets: {}, sessions: {}, challenges: {}, fails: {}, pending: {}
+        sheets: {}, sessions: {}, fails: {}
       };
     }
     function auth(token) {
       const s = db.sessions[token];
       if (!s || s.expires < now()) { if (s) { delete db.sessions[token]; persist(); } throw err('UNAUTHENTICATED', 'Sesioni ka përfunduar. Kyçuni përsëri.', 401); }
       return { rep: db.reps.find(r => r.id === s.repId), team: db.teams[s.teamId], teamId: s.teamId };
-    }
-    const methodsOf = rep => [rep.email && { type: 'email', masked: maskEmail(rep.email) }, rep.phone && { type: 'phone', masked: maskPhone(rep.phone) }].filter(Boolean);
-    function issueCode(holder, destination) {
-      if (holder.sentAt && now() - holder.sentAt < LIMITS.resendMs) throw err('TOO_SOON', 'Prisni pak para se të kërkoni kod të ri.', 429);
-      holder.code = sixDigits(); holder.sentAt = now(); holder.expires = now() + LIMITS.codeTtlMs; holder.attempts = 0;
-      return { sent: true, resendAfter: LIMITS.resendMs / 1000, destination, demoCode: holder.code };
-    }
-    function checkCode(holder, code, drop) {
-      if (!holder.code) throw err('NO_CODE', 'Kërkoni fillimisht një kod.', 400);
-      if (holder.attempts >= LIMITS.maxCodeAttempts) { drop(); persist(); throw err('TOO_MANY', 'Shumë përpjekje. Fillojeni kyçjen nga e para.', 429); }
-      if (holder.expires < now()) throw err('CODE_EXPIRED', 'Kodi ka skaduar. Kërkoni një kod të ri.', 400);
-      if (str(code, 12) !== holder.code) { holder.attempts++; persist(); throw err('INVALID_CODE', 'Kodi nuk është i saktë.', 400); }
     }
     db = load();
     return {
@@ -181,24 +165,13 @@
           throw err('INVALID_CREDENTIALS', 'Të dhënat e kyçjes nuk janë të sakta.', 401);
         }
         delete db.fails[u];
-        if (rep.teamId !== teamId) { persist(); throw err('TEAM_MISMATCH', 'Ky përdorues nuk është i caktuar për skuadrën e zgjedhur.', 403); }
-        const id = secureToken(); db.challenges[id] = { repId: rep.id, created: now(), method: '', code: '', attempts: 0 }; persist();
-        return { challengeId: id, methods: methodsOf(rep) };
-      },
-      async sendCode({ challengeId, method }) {
-        const ch = db.challenges[challengeId];
-        if (!ch || now() - ch.created > LIMITS.challengeTtlMs) throw err('CHALLENGE_EXPIRED', 'Kyçja ka skaduar. Filloni përsëri.', 401);
-        const rep = db.reps.find(r => r.id === ch.repId), m = methodsOf(rep).find(x => x.type === method);
-        if (!m) throw err('BAD_METHOD', 'Metoda e verifikimit nuk është e disponueshme.', 400);
-        ch.method = method; const out = issueCode(ch, m.masked); persist(); return out;
-      },
-      async verifyCode({ challengeId, code }) {
-        const ch = db.challenges[challengeId];
-        if (!ch || now() - ch.created > LIMITS.challengeTtlMs) throw err('CHALLENGE_EXPIRED', 'Kyçja ka skaduar. Filloni përsëri.', 401);
-        checkCode(ch, code, () => delete db.challenges[challengeId]);
-        const rep = db.reps.find(r => r.id === ch.repId), token = secureToken();
-        db.sessions[token] = { repId: rep.id, teamId: rep.teamId, expires: now() + LIMITS.sessionMs }; delete db.challenges[challengeId]; persist();
-        return { token, rep: { name: rep.name, username: rep.username }, team: { id: rep.teamId, name: db.teams[rep.teamId].name } };
+        // Skuadra merret nga përfaqësuesi; një skuadër e dërguar veçmas kontrollohet vetëm nëse përputhet.
+        if (teamId && rep.teamId !== teamId) { persist(); throw err('TEAM_MISMATCH', 'Ky përdorues nuk është i caktuar për skuadrën e zgjedhur.', 403); }
+        // Pa kod verifikimi: sesioni hapet direkt.
+        const token = secureToken();
+        db.sessions[token] = { repId: rep.id, teamId: rep.teamId, expires: now() + LIMITS.sessionMs };
+        persist();
+        return { token, rep: { name: rep.name, username: rep.username }, team: { id: rep.teamId, name: db.teams[rep.teamId]?.name || '' } };
       },
       async me(token) { const a = auth(token); return { rep: { name: a.rep.name, username: a.rep.username }, team: { id: a.teamId, name: a.team.name } }; },
       async logout(token) { delete db.sessions[token]; persist(); },
@@ -230,53 +203,67 @@
         return clone({ locked: false, submitted: true, sheet: s });
       },
       async getContacts(token) { const a = auth(token); return { email: maskEmail(a.rep.email), phone: maskPhone(a.rep.phone) }; },
-      async startContactChange(token, { type, value }) {
-        const a = auth(token), v = type === 'phone' ? cleanPhone(value) : str(value, 120).toLowerCase();
-        if (!validContact(type, v)) throw err('VALIDATION', type === 'phone' ? 'Numri duhet të ketë formatin ndërkombëtar, p.sh. +38344123456.' : 'Shkruani një email të vlefshëm.', 422);
-        const holder = db.pending[a.rep.id] || (db.pending[a.rep.id] = {});
-        holder.type = type; holder.value = v; const out = issueCode(holder, type === 'email' ? maskEmail(v) : maskPhone(v)); persist(); return out;
-      },
-      async confirmContactChange(token, { code }) {
-        const a = auth(token), holder = db.pending[a.rep.id];
-        if (!holder) throw err('NO_CODE', 'Kërkoni fillimisht një kod.', 400);
-        checkCode(holder, code, () => delete db.pending[a.rep.id]);
-        a.rep[holder.type] = holder.value; delete db.pending[a.rep.id]; persist();
-        return { email: maskEmail(a.rep.email), phone: maskPhone(a.rep.phone) };
-      },
       _snapshotFor(teamId, matchId) { return clone(db.sheets[matchId + '|' + teamId]?.snapshot || null); },
       reset() { db = seed(); persist(); }
     };
   }
 
   /* ---------- Adapteri i PORTALIT (prodhim) ---------- */
+  /* Flet me API-në e vërtetë të Portali-t: POST /api/team-auth me "action". */
   function createPortalAdapter({ portal, fetchImpl, fallbackTeams }) {
     const f = fetchImpl || ((...a) => global.fetch(...a));
-    async function call(method, path, body, token) {
+    const endpoint = portal + '/api/team-auth';
+    const errorFrom = (out, status) => new TeamError(out.code || 'ERROR', out.error || 'Lidhja dështoi.', status, out.details);
+    async function post(action, body, token) {
       let res;
-      try { res = await f(portal + '/api/team' + path, { method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) }); }
-      catch { throw new TeamError('NETWORK', 'Lidhja me serverin dështoi. Provoni përsëri.', 0); }
+      try {
+        res = await f(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+          body: JSON.stringify({ action, ...(body || {}) })
+        });
+      } catch { throw new TeamError('NETWORK', 'Lidhja me serverin dështoi. Provoni përsëri.', 0); }
       const out = await res.json().catch(() => ({}));
-      if (!res.ok) throw new TeamError(out.code || 'ERROR', out.error || 'Lidhja dështoi.', res.status, out.details);
+      if (!res.ok) throw errorFrom(out, res.status);
       return out;
     }
+    async function listTeams() {
+      let res;
+      try { res = await f(endpoint + '?action=teams'); }
+      catch { if (fallbackTeams) return fallbackTeams(); throw new TeamError('NETWORK', 'Lidhja me serverin dështoi. Provoni përsëri.', 0); }
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok) { if (fallbackTeams) return fallbackTeams(); throw errorFrom(out, res.status); }
+      return out.teams || [];
+    }
+    const repOut = r => ({ name: [r?.firstName, r?.lastName].filter(Boolean).join(' ').trim() || r?.name || r?.username || '', username: r?.username || '' });
+    const teamOut = t => ({ id: t?.id || '', name: t?.name || '' });
     return {
       demo: false,
-      async listTeams() { try { return (await call('GET', '/teams')).teams; } catch (e) { if (fallbackTeams) return fallbackTeams(); throw e; } },
-      startLogin: b => call('POST', '/auth/start', b),
-      sendCode: b => call('POST', '/auth/send', b),
-      verifyCode: b => call('POST', '/auth/verify', b),
-      me: t => call('GET', '/me', null, t),
-      logout: t => call('POST', '/auth/logout', {}, t).catch(() => { }),
-      getRoster: t => call('GET', '/roster', null, t),
-      saveRoster: (t, r) => call('PUT', '/roster', r, t),
-      listMatches: async t => (await call('GET', '/matches', null, t)).matches,
-      getSheet: (t, id) => call('GET', '/matches/' + encodeURIComponent(id) + '/sheet', null, t),
-      saveSheet: (t, id, s) => call('PUT', '/matches/' + encodeURIComponent(id) + '/sheet', s, t),
-      getContacts: t => call('GET', '/contacts', null, t),
-      startContactChange: (t, b) => call('POST', '/contacts/start', b, t),
-      confirmContactChange: (t, b) => call('POST', '/contacts/confirm', b, t)
+      listTeams,
+      async startLogin({ username, password, teamId }) {
+        const out = await post('login', { username, password, ...(teamId ? { teamId } : {}) });
+        // Pa kod verifikimi: serveri kthen sesionin direkt.
+        return { token: out.sessionToken, rep: repOut(out.representative), team: teamOut(out.team) };
+      },
+      async me(token) { const out = await post('me', null, token); return { rep: repOut(out.representative), team: teamOut(out.team) }; },
+      logout: token => post('logout', null, token).catch(() => { }),
+      getRoster: token => post('roster', null, token),
+      saveRoster: (token, roster) => post('roster-save', { roster }, token),
+      async listMatches(token) {
+        const out = await post('matches', null, token);
+        return (out.matches || []).map(m => ({
+          id: m.id,
+          home: typeof m.home === 'string' ? m.home : (m.home?.name || ''),
+          away: typeof m.away === 'string' ? m.away : (m.away?.name || ''),
+          date: m.date || '', time: m.time || '', venue: m.venue || '', competition: m.competition || '',
+          round: m.round ?? m.week ?? '', locked: !!m.locked, side: m.isHome ? 'home' : 'away', submitted: !!m.submitted
+        }));
+      },
+      getSheet: (token, id) => post('sheet', { matchId: id }, token),
+      saveSheet: (token, id, sheet) => post('sheet-save', { matchId: id, sheet }, token),
+      getContacts: token => post('contacts', null, token)
     };
   }
 
-  global.TeamCore = { ROLES, KIT_SETS, LIMITS, TeamError, normRoster, validateRoster, normSheet, validateSheet, buildSnapshot, snapshotToTeam, snapshotKey, maskEmail, maskPhone, cleanPhone, validContact, uid, createLocalAdapter, createPortalAdapter };
+  global.TeamCore = { ROLES, KIT_SETS, LIMITS, TeamError, normRoster, validateRoster, normSheet, validateSheet, buildSnapshot, snapshotToTeam, snapshotKey, maskEmail, maskPhone, uid, createLocalAdapter, createPortalAdapter };
 })(typeof window !== 'undefined' ? window : globalThis);
