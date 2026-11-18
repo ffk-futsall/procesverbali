@@ -245,8 +245,8 @@
     return {
       demo: false,
       listTeams,
-      async startLogin({ username, password, teamId }) {
-        const out = await post('login', { username, password, ...(teamId ? { teamId } : {}) });
+      async startLogin({ username, password, newPassword, teamId }) {
+        const out = await post('login', { username, password, ...(newPassword !== undefined ? { newPassword } : {}), ...(teamId ? { teamId } : {}) });
         // Pa kod verifikimi: serveri kthen sesionin direkt.
         return { token: out.sessionToken, rep: repOut(out.representative), team: teamOut(out.team) };
       },

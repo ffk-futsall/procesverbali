@@ -74,7 +74,16 @@
       const username = shell.querySelector('#tm-user').value.trim(), password = shell.querySelector('#tm-pass').value;
       if (!username || !password) throw new Error('Shkruani emrin e përdoruesit dhe fjalëkalimin.');
       // Pa kod verifikimi: sesioni hapet direkt dhe skuadra vjen nga llogaria.
-      const out = await a.startLogin({ username, password });
+      let out;
+      try { out = await a.startLogin({ username, password }); }
+      catch (e) {
+        if (e && e.code === 'PASSWORD_CHANGE_REQUIRED') {
+          const next = window.prompt('Fjalëkalimi juaj është i vjetër. Shkruani një fjalëkalim të ri (të paktën 8 karaktere):');
+          if (!next) throw e;
+          if (next !== window.prompt('Përsëritni fjalëkalimin e ri:')) throw new Error('Fjalëkalimet nuk përputhen.');
+          out = await a.startLogin({ username, password, newPassword: next });
+        } else throw e;
+      }
       S.token = out.token; S.rep = out.rep; S.team = out.team;
       try { sessionStorage.setItem(TOKEN_KEY, out.token); } catch { }
       await loadAll(); S.tab = 'matches'; render();
